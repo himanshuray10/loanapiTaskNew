@@ -1,0 +1,96 @@
+## cURL guide for Loan API
+
+This file contains ready-to-run cURL snippets to exercise the API locally.
+
+
+### Base URL
+- Default run: `http://localhost:8080`
+- If you run on another port (e.g., 8081): update the base URL accordingly.
+
+
+### Windows PowerShell
+Note: Use `curl.exe` explicitly (PowerShell aliases `curl` to Invoke-WebRequest).
+
+Set base URL:
+
+```
+$base = "http://localhost:8080"
+```
+
+Fetch a loan account by number:
+
+```
+curl.exe "$base/loanaccount/1"
+```
+
+Pretty-print JSON (PowerShell):
+
+```
+curl.exe -s "$base/loanaccount/1" | ConvertFrom-Json | ConvertTo-Json -Depth 10
+```
+
+Verbose request (show request/response headers):
+
+```
+curl.exe -v "$base/loanaccount/1"
+```
+
+Switch to another port (e.g., if the app is started with `--server.port=8081`):
+
+```
+$base = "http://localhost:8081"
+curl.exe "$base/loanaccount/1"
+```
+
+
+### macOS/Linux (bash/zsh)
+
+Set base URL:
+
+```
+BASE=http://localhost:8080
+```
+
+Fetch a loan account by number:
+
+```
+curl "$BASE/loanaccount/1"
+```
+
+Silent + show HTTP status code:
+
+```
+curl -s -o /dev/stderr -w "\nStatus: %{http_code}\n" "$BASE/loanaccount/1"
+```
+
+Verbose request (show request/response headers):
+
+```
+curl -v "$BASE/loanaccount/1"
+```
+
+Switch to another port (e.g., 8081):
+
+```
+BASE=http://localhost:8081
+curl "$BASE/loanaccount/1"
+```
+
+
+### Sample successful response
+
+```
+{
+  "loanAccountNumber": "1",
+  "dueDate": "2024-04-01",
+  "emiAmount": 10000.0
+}
+```
+
+
+### Tips
+- If you see a 404 with a JSON body not matching this service, you may be hitting another app on the same port. Either stop it or run this app with `--server.port=8081` and update the base URL.
+- The endpoint is idempotent for the same `loanAccountNumber`; the first call will persist the record, subsequent calls will read from the DB.
+- No auth headers are required.
+
+
