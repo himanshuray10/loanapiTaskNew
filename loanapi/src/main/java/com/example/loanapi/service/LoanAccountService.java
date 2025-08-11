@@ -11,7 +11,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -42,11 +46,33 @@ public class LoanAccountService {
         Double emiAmount = null;
 
         if (externalResponse.getEmiDetails() != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM yyyy");
+            DateTimeFormatter primaryFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
+            DateTimeFormatter shortFormatter = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH);
+            DateTimeFormatter localDateFormatter = new DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern("MMMM yyyy")
+                    .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
+                    .toFormatter(Locale.ENGLISH);
             for (ExternalLoanApiResponse.EMIDetail emiDetail : externalResponse.getEmiDetails()) {
                 Boolean isDue = emiDetail.getDueStatus();
                 if (Boolean.TRUE.equals(isDue)) {
-                    dueDate = LocalDate.parse(emiDetail.getMonth(), formatter).withDayOfMonth(1);
+                    try {
+                        String monthStr = emiDetail.getMonth() == null ? "" : emiDetail.getMonth().trim();
+                        YearMonth yearMonth;
+                        try {
+                            yearMonth = YearMonth.parse(monthStr, primaryFormatter);
+                        } catch (Exception e1) {
+                            yearMonth = YearMonth.parse(monthStr, shortFormatter);
+                        }
+                        dueDate = yearMonth.atDay(1);
+                    } catch (Exception parseEx) {
+                        try {
+                            dueDate = LocalDate.parse(emiDetail.getMonth().trim(), localDateFormatter);
+                        } catch (Exception ignored) {
+                            logger.warn("Failed to parse month '{}' from external API; using next month as fallback", emiDetail.getMonth());
+                            dueDate = LocalDate.now().plusMonths(1).withDayOfMonth(1);
+                        }
+                    }
                     emiAmount = emiDetail.getEmiAmount();
                     break;
                 }
